@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recharge Reminder</title>
+  <meta name="description" content="Get reminded to recharge your mobile line before it expires.">
+  <meta name="theme-color" content="#0f766e">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Recharge Reminder</h1>
+    <p class="sub">Never let your line expire again.</p>
+  </header>
+
+  <main>
+    <section id="alerts" aria-live="polite"></section>
+
+    <section>
+      <div class="row-between">
+        <h2>My lines</h2>
+        <button id="notify-btn" class="ghost" type="button">Turn on notifications</button>
+      </div>
+      <ul id="lines"></ul>
+      <p id="empty" class="muted">No lines yet. Add your first one below.</p>
+    </section>
+
+    <section class="card">
+      <h2 id="form-title">Add a line</h2>
+      <form id="line-form">
+        <input type="hidden" id="edit-id">
+        <label>Name
+          <input id="label" required placeholder="e.g. My phone, Mom's line">
+        </label>
+        <label>Phone number
+          <input id="number" inputmode="tel" placeholder="e.g. 03 123 456">
+        </label>
+        <label>Carrier
+          <select id="carrier">
+            <option>Alfa</option>
+            <option>Touch</option>
+            <option>Other</option>
+          </select>
+        </label>
+        <label>Expiry date
+          <input id="expiry" type="date" required>
+        </label>
+        <div class="two">
+          <label>Remind me (days before)
+            <input id="remind" type="number" min="0" max="30" value="3" required>
+          </label>
+          <label>Validity after recharge (days)
+            <input id="validity" type="number" min="1" max="365" value="30" required>
+          </label>
+        </div>
+        <div class="actions">
+          <button type="submit" id="save-btn">Add line</button>
+          <button type="button" id="cancel-btn" class="ghost" hidden>Cancel</button>
+        </div>
+      </form>
+    </section>
+
+    <p class="muted small">
+      Your lines are saved only on this phone. For a reminder even when this app
+      is closed, tap <strong>Add to calendar</strong> on a line.
+    </p>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
