@@ -47,7 +47,13 @@ header, main {
   padding: 0 16px;
 }
 
-header { padding-top: 24px; }
+header { padding-top: calc(24px + env(safe-area-inset-top)); }
+main { padding-bottom: env(safe-area-inset-bottom); }
+
+/* Android app: no calendar export, reminders are scheduled natively. */
+.native [data-act="calendar"], .native .web-only { display: none; }
+.app-only { display: none; }
+.native .app-only { display: inline; }
 h1 { margin: 0; font-size: 1.6rem; }
 h2 { font-size: 1.15rem; margin: 24px 0 12px; }
 .sub, .muted { color: var(--muted); }

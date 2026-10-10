@@ -1,0 +1,11 @@
+{
+  "appId": "com.unclemoe26.rechargereminder",
+  "appName": "Recharge Reminder",
+  "webDir": "www",
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_recharge",
+      "iconColor": "#0f766e"
+    }
+  }
+}

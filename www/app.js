@@ -138,6 +138,7 @@ function handleAction(act, id) {
 function persist() {
   save(STORAGE_KEY, lines);
   render();
+  checkReminders();
 }
 
 // ---- Form ----
@@ -186,7 +187,6 @@ $("line-form").addEventListener("submit", (e) => {
   }
   persist();
   resetForm();
-  checkReminders();
 });
 
 $("cancel-btn").addEventListener("click", resetForm);
@@ -238,7 +238,50 @@ function downloadIcs(line) {
   URL.revokeObjectURL(a.href);
 }
 
-// ---- Notifications (shown while the app is open or opened) ----
+// ---- Notifications ----
+
+// In the Android app, reminders are scheduled with the system so they fire
+// even when the app is closed. In a browser they only show while it's open.
+const Native = window.Capacitor?.isNativePlatform?.() ? window.Capacitor.Plugins.LocalNotifications : null;
+
+// Android notification ids must be integers; derive a stable one per line.
+function notificationId(line, slot) {
+  let h = 0;
+  for (const c of line.id) h = (h * 31 + c.charCodeAt(0)) % 100000000;
+  return h * 10 + slot;
+}
+
+function at9am(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 9, 0, 0);
+}
+
+async function scheduleNative() {
+  const pending = await Native.getPending();
+  if (pending.notifications.length) {
+    await Native.cancel({ notifications: pending.notifications.map((n) => ({ id: n.id })) });
+  }
+
+  const now = new Date();
+  const notifications = [];
+  for (const line of lines) {
+    const expiry = parseDate(line.expiry);
+    const remindDay = new Date(expiry.getTime() - line.remind * DAY);
+    const slots = [
+      [1, at9am(remindDay), `${line.label} expires in ${line.remind} day(s). Time to recharge.`],
+      [2, at9am(expiry), `${line.label} expires today. Recharge it now.`],
+    ];
+    for (const [slot, when, body] of slots) {
+      if (when <= now || (slot === 1 && line.remind === 0)) continue;
+      notifications.push({
+        id: notificationId(line, slot),
+        title: "Recharge Reminder",
+        body,
+        schedule: { at: when, allowWhileIdle: true },
+      });
+    }
+  }
+  if (notifications.length) await Native.schedule({ notifications });
+}
 
 function clearNotified(id) {
   const notified = load(NOTIFIED_KEY, {});
@@ -253,8 +296,12 @@ async function notify(text) {
   else new Notification("Recharge Reminder", { body: text, icon: "icon.svg" });
 }
 
-// Notify at most once per line per day.
+// Native: (re)schedule everything. Browser: notify at most once per line per day.
 function checkReminders() {
+  if (Native) {
+    scheduleNative().catch((e) => console.error("Scheduling failed", e));
+    return;
+  }
   const notified = load(NOTIFIED_KEY, {});
   const key = toDateString(today());
   for (const line of lines) {
@@ -265,23 +312,34 @@ function checkReminders() {
   save(NOTIFIED_KEY, notified);
 }
 
-function updateNotifyButton() {
+async function permissionState() {
+  if (Native) return (await Native.checkPermissions()).display;
+  return "Notification" in window ? Notification.permission : "unsupported";
+}
+
+async function updateNotifyButton() {
   const btn = $("notify-btn");
-  if (!("Notification" in window)) btn.hidden = true;
-  else if (Notification.permission === "granted") btn.textContent = "Notifications on";
-  else if (Notification.permission === "denied") btn.textContent = "Notifications blocked";
+  const state = await permissionState();
+  btn.hidden = state === "unsupported";
+  btn.textContent =
+    state === "granted" ? "Notifications on" :
+    state === "denied" ? "Notifications blocked" : "Turn on notifications";
 }
 
 $("notify-btn").addEventListener("click", async () => {
-  if (!("Notification" in window)) return;
-  await Notification.requestPermission();
-  updateNotifyButton();
+  if (Native) await Native.requestPermissions();
+  else if ("Notification" in window) await Notification.requestPermission();
+  await updateNotifyButton();
   checkReminders();
 });
 
 // ---- Start ----
 
-if ("serviceWorker" in navigator) {
+if (Native) {
+  // Calendar files can't be downloaded inside the app, and aren't needed there.
+  document.body.classList.add("native");
+  Native.requestPermissions().finally(updateNotifyButton);
+} else if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
 }
 
